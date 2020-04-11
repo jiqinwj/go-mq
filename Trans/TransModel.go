@@ -3,9 +3,10 @@ package Trans
 import "fmt"
 
 type TransModel struct {
-	From string `json:"from"`
-	To string  `json:"to"`
-	Money int `json:"m"`
+	Tid int `db:"tid"`
+	From string `json:"from" db:"from"`
+	To string  `json:"to" db:"to"`
+	Money int `json:"m" db:"money"`
 }
 func NewTransModel() *TransModel{
 	return &TransModel{}
