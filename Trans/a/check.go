@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"github.com/jmoiron/sqlx"
 	"github.com/robfig/cron/v3"
-	"go-mq/Trans"
 	"log"
+	"go-mq/Lib"
+	"go-mq/Trans"
 )
 var MyCron *cron.Cron
 func initCron() error {
@@ -19,11 +21,16 @@ func initCron() error {
 	if err2!=nil{
 		return err2
 	}
+	_,err3:=MyCron.AddFunc("0/2 * * * * *", reSendMsg)//重发
+	if err3!=nil{
+		return err3
+	}
 	return nil
 }
 
 const FailSql="update translog set STATUS=2 where TIMESTAMPDIFF(SECOND,updatetime,now())>20 and STATUS<>2"
 const BackSql="select tid, `from`,money from translog  where status=2 and isback=0 limit 10   "
+const resendSql="select * from translog where status=0 and TIMESTAMPDIFF(SECOND,updatetime,now())<=8 "
 //定时取消交易
 func FailTrans()  {
 	 _,err:=Trans.GetDB().Exec(FailSql)
@@ -32,6 +39,30 @@ func FailTrans()  {
 	 }
 }
 var islock=false
+func reSendMsg(){
+	rows,err:=Trans.GetDB().Queryx(resendSql)
+	if err!=nil{
+		log.Println(err)
+	}
+	transList:=[]*Trans.TransModel{}
+	err=sqlx.StructScan(rows,&transList)
+	if err!=nil{
+		log.Println(err)
+	}else{
+		mq:=Lib.NewMQ()
+		for _,tm:=range transList{
+			jsonb,_:=json.Marshal(tm) //可以使用协程
+			err=mq.SendMessage(Lib.ROUTER_KEY_TRANS,Lib.EXCHANGE_TRANS,string(jsonb))
+			if err!=nil{
+				log.Println(err)
+			}else {
+				log.Println("重发成功:",tm)
+			}
+		}
+
+	}
+
+}
 func clearTx(tx *sqlx.Tx){ //清理事务
 	err:=tx.Commit()
 	if err!=nil && err!=sql.ErrTxDone{
@@ -52,7 +83,7 @@ func BackMoney()  {
 	}
     islock=true  //加锁
     defer clearTx(tx) //清理事务
-    //time.Sleep(time.Second*8)
+
     rows,err:=tx.Queryx(BackSql)
     if err!=nil{
     	tx.Rollback()

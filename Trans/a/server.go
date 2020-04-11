@@ -12,6 +12,7 @@ func main()  {
 	router:=gin.Default()
 	router.Use(Trans.ErrorMiddleware())
 	router.Handle("POST","/", func(context *gin.Context) {
+
 		tm:=Trans.NewTransModel()
 		err:=context.BindJSON(&tm)
 		Trans.CheckError(err,"参数失败:")
@@ -22,7 +23,7 @@ func main()  {
 		//发送到MQ
 		mq:=Lib.NewMQ()
 		jsonb,_:=json.Marshal(tm)
-	   err=mq.SendMessage(Lib.ROUTER_KEY_TRANS,Lib.EXCHANGE_TRANS,string(jsonb))
+	     err=mq.SendMessage(Lib.ROUTER_KEY_TRANS,Lib.EXCHANGE_TRANS,string(jsonb))
 	   if err!=nil{
 	   	log.Println(err)
 	   }
@@ -33,7 +34,7 @@ func main()  {
 
 	c:=make(chan error)
 	go func() {
-		err:=router.Run(":8080")
+		err:=router.Run(":8088")
 		if err!=nil{
 			c<-err
 		}

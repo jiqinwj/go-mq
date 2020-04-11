@@ -31,5 +31,7 @@ func TransMoney(tm *TransModel)  error {
 		}
 		return fmt.Errorf("插入日志失败")
 	}
+	tid,_:=ret.LastInsertId() //赋值tid,tid=交易号
+	tm.Tid=tid
 	return tx.Commit()
 }
