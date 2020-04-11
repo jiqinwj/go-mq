@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"log"
+	"go-mq/Lib"
 	"go-mq/Trans"
 )
 
@@ -16,9 +18,16 @@ func main()  {
 
 		//执行转账--A公司
 		err=Trans.TransMoney(tm)
-		Trans.CheckError(err,"转账失败-A:")
+		Trans.CheckError(err,"转账失败-A:")//如果到这一步爆炸了
+		//发送到MQ
+		mq:=Lib.NewMQ()
+		jsonb,_:=json.Marshal(tm)
+	   err=mq.SendMessage(Lib.ROUTER_KEY_TRANS,Lib.EXCHANGE_TRANS,string(jsonb))
+	   if err!=nil{
+	   	log.Println(err)
+	   }
 
-        context.JSON(200,gin.H{"result":tm.String()})
+		context.JSON(200,gin.H{"result":tm.String()})
 
 	})
 
@@ -31,6 +40,12 @@ func main()  {
 	}()
 	go func() {
 		err:=Trans.DBInit("a")
+		if err!=nil{
+			c<-err
+		}
+	}()
+	go func() {
+		err:=Lib.TransInit()
 		if err!=nil{
 			c<-err
 		}

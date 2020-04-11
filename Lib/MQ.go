@@ -1,6 +1,7 @@
 package Lib
 
 import (
+	"fmt"
 	"github.com/streadway/amqp"
 	"log"
 	"go-mq/AppInit"
@@ -13,7 +14,9 @@ const (
 	EXCHANGE_USER_DELAY="UserExchangeDelay"
 	ROUTER_KEY_USERREG="userreg" //注册用户的路由key
 
-
+	EXCHANGE_TRANS="TransExchange" //转账相关交换机
+	ROUTER_KEY_TRANS="trans" //转账相关路由key
+	QUEUE_TRANS="TransQueueA" //转账相关队列
 )
 type MQ struct {
 	Channel *amqp.Channel
@@ -51,6 +54,7 @@ func(this *MQ) NotifyReturn(){
 }
 func(this *MQ) listenReturn ()  {
 	ret:=<-this.notifyReturn
+	fmt.Println(ret.Headers)
 	if string(ret.Body)!=""{
 		log.Println("消息没有正确入列:",string(ret.Body))
 	}
